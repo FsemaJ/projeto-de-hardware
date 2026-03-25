@@ -1,6 +1,6 @@
 import React from 'react';
 
-function App() {
+function MapaEstatico({ onVoltar }) {
   return (
     <div style={{ 
       width: '100vw', 
@@ -17,9 +17,31 @@ function App() {
         backgroundColor: '#2c3e50',
         color: 'white',
         textAlign: 'center',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '15px'
       }}>
-        <h1 style={{ margin: '0' }}>Mapa do Paraná</h1>
+        <button
+          onClick={onVoltar}
+          style={{
+            padding: '8px 15px',
+            backgroundColor: '#e74c3c',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '14px'
+          }}
+        >
+          ← Voltar ao Mapa Interativo
+        </button>
+        
+        <h1 style={{ margin: '0', flex: 1 }}>Mapa de Paraná</h1>
+        
+        <div style={{ width: '200px' }}></div>
       </div>
 
       <div style={{
@@ -46,4 +68,4 @@ function App() {
   );
 }
 
-export default App;
+export default MapaEstatico;
