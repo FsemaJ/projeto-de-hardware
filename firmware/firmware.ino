@@ -6,7 +6,7 @@ const char* ssid = "Ap17";
 const char* password = "HsxFs7_J3W";
 
 // Endereço do seu Backend
-const char* serverPath = "http://192.168.1.8:3001/api/bacia/proxima";
+const char* serverPath = "http://192.168.1.5:3001/api/bacia/proxima";
 
 const int pinoBotao = 12; // Pino solicitado
 bool ultimoEstadoBotao = HIGH;

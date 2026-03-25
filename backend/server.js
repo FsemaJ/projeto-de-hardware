@@ -14,6 +14,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Rota de teste
+app.get('/', (req, res) => {
+    res.json({ mensagem: '✅ Backend está rodando!', status: 'ativo' });
+});
+
+app.get('/api/test', (req, res) => {
+    res.json({ mensagem: '✅ API está funcionando!', status: 'ativo' });
+});
+
 /**
  * ROTA 1: Ativa uma bacia específica por ID
  * Útil para cliques manuais na interface React
@@ -69,15 +78,29 @@ app.post('/api/bacia/proxima', async (req, res) => {
         if (!monitorDoc.exists) {
             // Se o monitoramento estiver vazio, começa pela primeira da lista
             proximaBacia = listaBacias[0];
+            console.log(`🟢 Primeira bacia: ${proximaBacia.nome}`);
         } else {
             const baciaAtual = monitorDoc.data();
-            // Encontra o índice da bacia atual na lista
-            const indexAtual = listaBacias.findIndex(b => b.id_bacia === baciaAtual.id_bacia);
+            console.log(`📍 Bacia atual no Firebase: ${baciaAtual.nome} (id: ${baciaAtual.id_bacia})`);
+            console.log(`📋 Total de bacias na lista: ${listaBacias.length}`);
             
-            // Calcula o próximo índice (se for a última, volta para a primeira - resto da divisão)
-            const proximoIndex = (indexAtual + 1) % listaBacias.length;
-            proximaBacia = listaBacias[proximoIndex];
+            // Encontra o índice da bacia atual na lista
+            let indexAtual = listaBacias.findIndex(b => b.id_bacia === baciaAtual.id_bacia);
+            console.log(`🔍 Índice encontrado: ${indexAtual}`);
+            
+            // Se não encontrar (retorna -1), assume que é a bacia 16 e vai para 1
+            if (indexAtual === -1) {
+                console.log(`⚠️ Bacia não encontrada! Assumindo que era a bacia 16, voltando para 1`);
+                proximaBacia = listaBacias[0]; // Volta para a primeira bacia
+            } else {
+                // Calcula o próximo índice (se for a última, volta para a primeira)
+                const proximoIndex = (indexAtual + 1) % listaBacias.length;
+                proximaBacia = listaBacias[proximoIndex];
+                console.log(`➡️ Próximo índice: ${proximoIndex}`);
+            }
         }
+        
+        console.log(`✅ Nova bacia: ${proximaBacia.nome} (id_bacia: ${proximaBacia.id_bacia})`);
 
         // 3. Atualiza o documento de monitoramento que o React está observando
         await db.collection('monitoramento').doc('status_atual').set({
@@ -105,7 +128,8 @@ const IP_LOCAL = '0.0.0.0'; // Permite conexões externas (como as do ESP32)
 app.listen(PORT, IP_LOCAL, () => {
     console.log(`
     🚀 Backend rodando com sucesso!
-    📡 Endpoint para o ESP32: http://192.168.1.8:${PORT}/api/bacia/proxima
-    🏠 Endpoint para o React: http://192.168.1.8:${PORT}/api/bacia/ativar
+    📡 Endpoint para o ESP32: http://192.168.1.5:${PORT}/api/bacia/proxima
+    🏠 Endpoint para o React: http://192.168.1.5:${PORT}/api/bacia/ativar
+    ✅ Teste: http://192.168.1.5:${PORT}/api/test
     `);
 });

@@ -1,0 +1,210 @@
+[
+  {
+    "id": 1,
+    "nome": "Bacia do Rio das Cinzas",
+    "id_bacia": 1,
+    "latitude": -23.760339,
+    "longitude": -51.292547,
+    "coordenadas": {
+      "x": 1152,
+      "y": 548,
+      "width": 220,
+      "height": 200
+    }
+  },
+  {
+    "id": 2,
+    "nome": "Bacia do Rio Iguaçu",
+    "id_bacia": 2,
+    "latitude": -25.936015,
+    "longitude": -52.35393,
+    "coordenadas": {
+      "x": 780,
+      "y": 1048,
+      "width": 450,
+      "height": 380
+    }
+  },
+  {
+    "id": 3,
+    "nome": "Bacia do Rio Itararé",
+    "id_bacia": 3,
+    "latitude": -24.040202,
+    "longitude": -50.63937,
+    "coordenadas": {
+      "x": 1435,
+      "y": 628,
+      "width": 180,
+      "height": 160
+    }
+  },
+  {
+    "id": 4,
+    "nome": "Bacia do Rio Ivaí",
+    "id_bacia": 4,
+    "latitude": -24.430657,
+    "longitude": -52.930581,
+    "coordenadas": {
+      "x": 500,
+      "y": 768,
+      "width": 320,
+      "height": 280
+    }
+  },
+  {
+    "id": 5,
+    "nome": "Bacia Litorânea",
+    "id_bacia": 5,
+    "latitude": -25.444498,
+    "longitude": -49.647906,
+    "coordenadas": {
+      "x": 1870,
+      "y": 948,
+      "width": 250,
+      "height": 180
+    }
+  },
+  {
+    "id": 6,
+    "nome": "Bacia do Rio Paranapanema 1",
+    "id_bacia": 6,
+    "latitude": -23.151748,
+    "longitude": -51.193786,
+    "coordenadas": {
+      "x": 1188,
+      "y": 320,
+      "width": 160,
+      "height": 140
+    }
+  },
+  {
+    "id": 7,
+    "nome": "Bacia do Rio Paranapanema 2",
+    "id_bacia": 7,
+    "latitude": -23.104218,
+    "longitude": -51.851251,
+    "coordenadas": {
+      "x": 1000,
+      "y": 300,
+      "width": 120,
+      "height": 100
+    }
+  },
+  {
+    "id": 8,
+    "nome": "Bacia do Rio Paranapanema 3",
+    "id_bacia": 8,
+    "latitude": -23.00612,
+    "longitude": -52.649223,
+    "coordenadas": {
+      "x": 620,
+      "y": 268,
+      "width": 200,
+      "height": 180
+    }
+  },
+  {
+    "id": 9,
+    "nome": "Bacia do Rio Paranapanema 4",
+    "id_bacia": 9,
+    "latitude": -22.996709,
+    "longitude": -53.683487,
+    "coordenadas": {
+      "x": 240,
+      "y": 260,
+      "width": 220,
+      "height": 200
+    }
+  },
+  {
+    "id": 10,
+    "nome": "Bacia do Rio Paraná 1",
+    "id_bacia": 10,
+    "latitude": -23.15991,
+    "longitude": -54.535685,
+    "coordenadas": {
+      "x": 50,
+      "y": 330,
+      "width": 140,
+      "height": 120
+    }
+  },
+  {
+    "id": 11,
+    "nome": "Bacia do Rio Paraná 2",
+    "id_bacia": 11,
+    "latitude": -23.88428,
+    "longitude": -54.823204,
+    "coordenadas": {
+      "x": 20,
+      "y": 550,
+      "width": 160,
+      "height": 140
+    }
+  },
+  {
+    "id": 12,
+    "nome": "Bacia do Rio Paraná 3",
+    "id_bacia": 12,
+    "latitude": -25.15955,
+    "longitude": -55.090975,
+    "coordenadas": {
+      "x": 10,
+      "y": 920,
+      "width": 280,
+      "height": 240
+    }
+  },
+  {
+    "id": 13,
+    "nome": "Bacia do Rio Piquiri",
+    "id_bacia": 13,
+    "latitude": -24.849656,
+    "longitude": -53.764657,
+    "coordenadas": {
+      "x": 200,
+      "y": 850,
+      "width": 280,
+      "height": 240
+    }
+  },
+  {
+    "id": 14,
+    "nome": "Bacia do Rio Pirapó",
+    "id_bacia": 14,
+    "latitude": -23.287774,
+    "longitude": -52.91579,
+    "coordenadas": {
+      "x": 490,
+      "y": 380,
+      "width": 200,
+      "height": 180
+    }
+  },
+  {
+    "id": 15,
+    "nome": "Bacia do Rio Ribeira",
+    "id_bacia": 15,
+    "latitude": -24.903245,
+    "longitude": -50.192842,
+    "coordenadas": {
+      "x": 1650,
+      "y": 870,
+      "width": 250,
+      "height": 220
+    }
+  },
+  {
+    "id": 16,
+    "nome": "Bacia do Rio Tibagi",
+    "id_bacia": 16,
+    "latitude": -24.531824,
+    "longitude": -51.535173,
+    "coordenadas": {
+      "x": 1100,
+      "y": 768,
+      "width": 300,
+      "height": 280
+    }
+  }
+]

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, onSnapshot } from "firebase/firestore";
 
@@ -16,18 +16,83 @@ const db = getFirestore(app);
 
 function App() {
   const [conectado, setConectado] = useState(false);
+  const [bacias, setBacias] = useState([]);
+  const [baciaAtiva, setBaciaAtiva] = useState(null);
+  const canvasRef = useRef(null);
+  const imageRef = useRef(null);
+
+  // Carregar dados das bacias
+  useEffect(() => {
+    fetch('/bacias.json')
+      .then(response => response.json())
+      .then(data => setBacias(data))
+      .catch(error => console.error('Erro ao carregar bacias:', error));
+  }, []);
 
   // Conectar ao Firebase
   useEffect(() => {
     const docRef = doc(db, "monitoramento", "status_atual");
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       setConectado(true);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        // Encontra o ID da bacia ativa
+        const baciaEncontrada = bacias.find(b => b.nome === data.nome);
+        if (baciaEncontrada) {
+          setBaciaAtiva(baciaEncontrada.id);
+        }
+      }
     }, (error) => {
       console.error(error);
       setConectado(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [bacias]);
+
+  // Desenhar overlay nas bacias não selecionadas
+  useEffect(() => {
+    if (!imageRef.current || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = imageRef.current;
+
+    if (!img.complete) {
+      img.onload = () => desenharMapa();
+    } else {
+      desenharMapa();
+    }
+
+    function desenharMapa() {
+      // Ajustar canvas para o tamanho da imagem
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Desenhar apenas a imagem base (sem overlay)
+      ctx.drawImage(img, 0, 0);
+
+      // Se houver uma bacia ativa, desenhar uma borda ao redor dela
+      if (baciaAtiva) {
+        const baciaAtual = bacias.find(b => b.id === baciaAtiva);
+        if (baciaAtual) {
+          const coords = baciaAtual.coordenadas;
+          
+          // Desenhar borda em volta da bacia
+          ctx.strokeStyle = '#FFD700'; // Ouro
+          ctx.lineWidth = 8;
+          ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+          ctx.shadowBlur = 20;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+          
+          ctx.strokeRect(coords.x - 4, coords.y - 4, coords.width + 8, coords.height + 8);
+          
+          // Limpar shadow
+          ctx.shadowColor = 'transparent';
+        }
+      }
+    }
+  }, [bacias, baciaAtiva]);
 
   return (
     <div style={{ 
@@ -53,7 +118,9 @@ function App() {
       }}>
         <div style={{ flex: 1 }}></div>
         
-        <h1 style={{ margin: '0', flex: 1, textAlign: 'center' }}>Mapa do Paraná</h1>
+        <h1 style={{ margin: '0', flex: 1, textAlign: 'center' }}>
+          Mapa do Paraná {baciaAtiva && `- ${bacias.find(b => b.id === baciaAtiva)?.nome || 'Carregando...'}`}
+        </h1>
         
         <div style={{
           display: 'inline-block',
@@ -62,7 +129,7 @@ function App() {
           borderRadius: '5px',
           fontWeight: 'bold'
         }}>
-          {conectado ? '✓ Conectado ao Firebase' : '✗ Desconectado'}
+          {conectado ? '✓ Conectado' : '✗ Desconectado'}
         </div>
       </div>
 
@@ -72,20 +139,44 @@ function App() {
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'auto',
-        padding: '20px'
+        padding: '20px',
+        position: 'relative'
       }}>
+        {/* Imagem base (oculta) */}
         <img 
+          ref={imageRef}
           src="/mapa_parana_page_1.png" 
           alt="Mapa do Estado do Paraná"
           style={{
+            display: 'none'
+          }}
+        />
+        
+        {/* Canvas para overlay */}
+        <canvas
+          ref={canvasRef}
+          style={{
             maxWidth: '100%',
             maxHeight: '100%',
-            objectFit: 'contain',
             boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
             borderRadius: '8px'
           }}
         />
       </div>
+
+      {/* Info adicional */}
+      {baciaAtiva && (
+        <div style={{
+          padding: '15px',
+          backgroundColor: '#ecf0f1',
+          textAlign: 'center',
+          borderTop: '1px solid #bdc3c7'
+        }}>
+          <p style={{ margin: 0, fontWeight: 'bold', color: '#2c3e50' }}>
+            Bacia Selecionada: {bacias.find(b => b.id === baciaAtiva)?.nome}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
