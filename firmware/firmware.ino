@@ -1,36 +1,58 @@
-#include <Wire.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// Configurações da sua rede
+const char* ssid = "Ap17";
+const char* password = "HsxFs7_J3W";
+
+// Endereço do seu Backend
+const char* serverPath = "http://192.168.1.8:3001/api/bacia/proxima";
+
+const int pinoBotao = 12; // Pino solicitado
+bool ultimoEstadoBotao = HIGH;
 
 void setup() {
-  Wire.begin(); // Padrão ESP32: SDA=21, SCL=22
   Serial.begin(115200);
-  while (!Serial); 
-  Serial.println("\nI2C Scanner - Verificando APDS-9960...");
+  pinMode(pinoBotao, INPUT_PULLUP); // Usa o resistor interno
+
+  WiFi.begin(ssid, password);
+  Serial.print("Conectando ao Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWi-Fi Conectado!");
+}
+
+void trocarBacia() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverPath);
+    
+    // Envia um POST vazio (o backend resolve qual é a bacia)
+    int httpResponseCode = http.POST("");
+
+    if (httpResponseCode > 0) {
+      Serial.print("Sucesso! Status: ");
+      Serial.println(httpResponseCode);
+    } else {
+      Serial.print("Erro na requisição: ");
+      Serial.println(httpResponseCode);
+    }
+    http.end();
+  }
 }
 
 void loop() {
-  byte error, address;
-  int nDevices = 0;
+  bool estadoAtual = digitalRead(pinoBotao);
 
-  Serial.println("Escaneando...");
-
-  for (address = 1; address < 127; address++) {
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-
-    if (error == 0) {
-      Serial.print("Dispositivo I2C encontrado no endereco 0x");
-      if (address < 16) Serial.print("0");
-      Serial.print(address, HEX);
-      Serial.println(" !");
-      nDevices++;
+  // Detecta quando o botão é pressionado (de HIGH para LOW)
+  if (ultimoEstadoBotao == HIGH && estadoAtual == LOW) {
+    delay(50); // Debounce simples para evitar falsos cliques
+    if (digitalRead(pinoBotao) == LOW) {
+      Serial.println("Botão pressionado! Trocando bacia...");
+      trocarBacia();
     }
   }
-
-  if (nDevices == 0) {
-    Serial.println("Nenhum dispositivo I2C encontrado.\n");
-  } else {
-    Serial.println("Scanner finalizado.\n");
-  }
-
-  delay(5000); 
+  ultimoEstadoBotao = estadoAtual;
 }
