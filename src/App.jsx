@@ -1,78 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import mqtt from 'mqtt';
+import { io } from 'socket.io-client'; // Trocamos mqtt por socket.io-client
 
 function App() {
   const [baciaAtiva, setBaciaAtiva] = useState(null);
   const [conectado, setConectado] = useState(false);
   const [dadosBacias, setDadosBacias] = useState([]);
 
-  // 1. Carregar os dados do seu arquivo JSON local
+  // 1. Carregar os dados direto do Backend (PostgreSQL) ao iniciar
   useEffect(() => {
-    fetch('/bacias.json')
+    // Usando a rota HTTP que criamos no Node.js
+    fetch('http://localhost:3001/api/bacias')
       .then(res => res.json())
-      .then(data => setDadosBacias(data))
-      .catch(err => console.error("Erro ao carregar bacias.json:", err));
+      .then(data => {
+        setDadosBacias(data);
+        console.log("Bacias carregadas do banco:", data);
+      })
+      .catch(err => console.error("Erro ao carregar do backend:", err));
   }, []);
 
-  // 2. Configuração da conexão MQTT
+  // 2. Configuração da conexão WebSocket (Socket.io)
   useEffect(() => {
-    // IMPORTANTE: Se o broker é local, use o IP da máquina do seu colega ou 'localhost'
-    // A porta de WebSockets geralmente é a 9001
-    const host = 'localhost'; 
-    const port = '9001';
-    const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
-    const url = `ws://${host}:${port}/mqtt`;
+    // Conecta no Node.js (que está rodando na porta 3001)
+    const socket = io('http://localhost:3001');
 
-    const client = mqtt.connect(url, {
-      clientId,
-      clean: true,
-      connectTimeout: 4000,
-      reconnectPeriod: 1000,
-    });
-
-    client.on('connect', () => {
+    socket.on('connect', () => {
       setConectado(true);
-      console.log('Conectado ao Broker Local!');
-      client.subscribe('projeto/bacias/comando'); 
+      console.log('✅ Conectado ao Backend via WebSocket!');
     });
 
-    client.on('message', (topic, message) => {
-      try {
-        const payload = JSON.parse(message.toString());
-        // O colega deve enviar no Postgres o ID (ex: 1 a 16)
-        if (payload.id_bacia) {
-          setBaciaAtiva(payload.id_bacia);
-        }
-      } catch (e) {
-        console.error("Erro ao processar mensagem:", e);
-      }
+    // Escuta exatamente o evento que o Node.js emite
+    socket.on('baciaAtualizada', (bacia) => {
+      console.log("Nova bacia recebida do Node.js:", bacia);
+      // O banco de dados retorna a coluna 'id_bacia'
+      setBaciaAtiva(bacia.id_bacia);
     });
 
-    client.on('error', (err) => {
-      console.error("Erro de conexão:", err);
+    socket.on('disconnect', () => {
+      console.log("❌ Desconectado do Backend");
       setConectado(false);
     });
 
-    return () => client.end();
+    return () => socket.disconnect();
   }, []);
 
   // 3. Lógica para renderizar a imagem correta
   const getImagemUrl = () => {
     if (baciaAtiva) {
-      // Mantendo a extensão dupla que vi no seu VS Code (.png.jpeg)
       return `/bacia_${baciaAtiva}.png.jpeg`;
     }
     return "/mapa_parana_page_1.png";
   };
 
-  const infoBacia = dadosBacias.find(b => b.id === baciaAtiva);
+  // Alterado b.id para b.id_bacia (nome exato da coluna no seu PostgreSQL)
+  const infoBacia = dadosBacias.find(b => b.id_bacia === baciaAtiva);
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f2f5' }}>
       <header style={{ padding: '15px 25px', backgroundColor: '#1a252f', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>Monitoramento de Bacias Hidrográficas</h2>
         <div style={{ padding: '5px 12px', borderRadius: '4px', background: conectado ? '#2ecc71' : '#e74c3c', fontSize: '14px', fontWeight: 'bold' }}>
-          {conectado ? 'BROKER LOCAL ATIVO' : 'OFFLINE'}
+          {conectado ? 'BACKEND ATIVO' : 'OFFLINE'}
         </div>
       </header>
 
@@ -87,7 +74,10 @@ function App() {
       {infoBacia && (
         <footer style={{ padding: '20px', background: 'white', borderTop: '4px solid #3498db', textAlign: 'center' }}>
           <h3 style={{ margin: 0 }}>{infoBacia.nome}</h3>
-          <p style={{ margin: '5px 0 0', color: '#666' }}>Bacia ID {baciaAtiva} selecionada via hardware.</p>
+          {/* Mostrando dados ricos que vêm do banco! */}
+          <p style={{ margin: '5px 0 0', color: '#666' }}>
+            Área: {infoBacia.area_km2} km² | Rios Principais: {infoBacia.principais_rios}
+          </p>
         </footer>
       )}
     </div>
