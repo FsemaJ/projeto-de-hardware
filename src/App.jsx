@@ -10,7 +10,7 @@ function App() {
   // 1. Carregar os dados direto do Backend (PostgreSQL) ao iniciar
   useEffect(() => {
     // Usando a rota HTTP que criamos no Node.js
-    fetch('http://192.168.1.8:3001/api/bacias')
+    fetch('http://10.81.253.154:3001/api/bacias')
       .then(res => res.json())
       .then(data => {
         setDadosBacias(data);
@@ -22,7 +22,7 @@ function App() {
   // 2. Configuração da conexão WebSocket (Socket.io)
   useEffect(() => {
     // Conecta no Node.js (que está rodando na porta 3001)
-    const socket = io('http://192.168.1.8:3001');
+    const socket = io('http://10.81.253.154:3001');
 
     socket.on('connect', () => {
       setConectado(true);
