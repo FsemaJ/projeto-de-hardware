@@ -1,58 +1,66 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <Wire.h>
+#include <SparkFun_APDS9960.h>
 
-// Configurações da sua rede
+// Configurações WiFi
 const char* ssid = "Ap17";
 const char* password = "HsxFs7_J3W";
+const char* serverBase = "http://192.168.1.8:3001/api/bacia";
 
-// Endereço do seu Backend
-const char* serverPath = "http://192.168.1.5:3001/api/bacia/proxima";
+// Pinos e Sensor
+#define APDS9960_INT 19
+SparkFun_APDS9960 apds = SparkFun_APDS9960();
+volatile bool isr_flag = false;
 
-const int pinoBotao = 12; // Pino solicitado
-bool ultimoEstadoBotao = HIGH;
+void IRAM_ATTR interruptRoutine() {
+  isr_flag = true;
+}
 
 void setup() {
   Serial.begin(115200);
-  pinMode(pinoBotao, INPUT_PULLUP); // Usa o resistor interno
+  pinMode(APDS9960_INT, INPUT_PULLUP);
 
+  // Conexão WiFi
   WiFi.begin(ssid, password);
-  Serial.print("Conectando ao Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println("\nWiFi Conectado!");
+
+  // Inicialização do Sensor
+  if (apds.init() && apds.enableGestureSensor(true)) {
+    Serial.println("APDS-9960 pronto!");
+  } else {
+    Serial.println("Erro no sensor!");
+    while(1);
   }
-  Serial.println("\nWi-Fi Conectado!");
+  attachInterrupt(digitalPinToInterrupt(APDS9960_INT), interruptRoutine, FALLING);
 }
 
-void trocarBacia() {
+void enviarComando(String endpoint) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(serverPath);
-    
-    // Envia um POST vazio (o backend resolve qual é a bacia)
+    String url = String(serverBase) + endpoint;
+    http.begin(url);
     int httpResponseCode = http.POST("");
-
-    if (httpResponseCode > 0) {
-      Serial.print("Sucesso! Status: ");
-      Serial.println(httpResponseCode);
-    } else {
-      Serial.print("Erro na requisição: ");
-      Serial.println(httpResponseCode);
-    }
+    Serial.printf("Gesto -> %s | Status: %d\n", endpoint.c_str(), httpResponseCode);
     http.end();
   }
 }
 
 void loop() {
-  bool estadoAtual = digitalRead(pinoBotao);
-
-  // Detecta quando o botão é pressionado (de HIGH para LOW)
-  if (ultimoEstadoBotao == HIGH && estadoAtual == LOW) {
-    delay(50); // Debounce simples para evitar falsos cliques
-    if (digitalRead(pinoBotao) == LOW) {
-      Serial.println("Botão pressionado! Trocando bacia...");
-      trocarBacia();
+  if (isr_flag) {
+    detachInterrupt(digitalPinToInterrupt(APDS9960_INT));
+    
+    if (apds.isGestureAvailable()) {
+      switch (apds.readGesture()) {
+        case DIR_RIGHT: enviarComando("/proxima");  break;
+        case DIR_LEFT:  enviarComando("/anterior"); break;
+        case DIR_UP:    enviarComando("/info");     break; // Reforça bacia atual
+        case DIR_DOWN:  enviarComando("/home");     break; // Volta ao início
+      }
     }
+    
+    isr_flag = false;
+    attachInterrupt(digitalPinToInterrupt(APDS9960_INT), interruptRoutine, FALLING);
   }
-  ultimoEstadoBotao = estadoAtual;
 }

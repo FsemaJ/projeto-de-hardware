@@ -27,63 +27,73 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
-// 3. Conexão com o Broker MQTT (Mosquitto local)
+// 3. Conexão com o Broker MQTT (Mosquitto local) - Mantido para compatibilidade
 const mqttClient = mqtt.connect(process.env.MQTT_BROKER);
 
 mqttClient.on('connect', () => {
     console.log('🔌 Conectado ao Broker MQTT!');
-    // Assina o tópico que o ESP32 usa para enviar o clique do botão
     mqttClient.subscribe('bacias/comando/proxima');
 });
 
 // Variável em memória para guardar o ID da bacia atual
 let idBaciaAtual = null;
 
-// 4. Escuta as mensagens MQTT vindas do ESP32
+// 4. Escuta as mensagens MQTT (se ainda for usar algum botão físico)
 mqttClient.on('message', async (topic, message) => {
     if (topic === 'bacias/comando/proxima') {
-        console.log('📡 Sinal MQTT recebido do ESP32! Trocando bacia...');
-        await avancaParaProximaBacia();
+        console.log('📡 Sinal MQTT recebido! Trocando bacia...');
+        await navegarBacia('proxima');
     }
 });
 
-// Lógica principal: Busca a próxima bacia e avisa o React
-async function avancaParaProximaBacia() {
+// =========================================================
+// LÓGICA DE NAVEGAÇÃO CENTRALIZADA
+// =========================================================
+async function navegarBacia(direcao) {
     try {
-        // Busca todas as bacias na tabela correta
         const { rows: listaBacias } = await pool.query('SELECT * FROM bacias_hidrograficas ORDER BY id_bacia ASC');
         
         if (listaBacias.length === 0) {
             console.log("⚠️ Nenhuma bacia encontrada no banco de dados.");
-            return;
+            return null;
         }
 
         let proximaBacia;
 
-        if (!idBaciaAtual) {
+        if (!idBaciaAtual && direcao !== 'home') {
+            // Se estava na tela inicial e fez um gesto, vai para a primeira
             proximaBacia = listaBacias[0];
         } else {
             const indexAtual = listaBacias.findIndex(b => b.id_bacia === idBaciaAtual);
-            const proximoIndex = (indexAtual + 1) % listaBacias.length;
-            proximaBacia = listaBacias[proximoIndex];
+            let novoIndex = indexAtual;
+
+            if (direcao === 'proxima') {
+                novoIndex = (indexAtual + 1) % listaBacias.length;
+            } else if (direcao === 'anterior') {
+                novoIndex = (indexAtual - 1 + listaBacias.length) % listaBacias.length;
+            }
+
+            proximaBacia = listaBacias[novoIndex];
         }
 
         idBaciaAtual = proximaBacia.id_bacia;
         console.log(`✅ Nova bacia ativa: ${proximaBacia.nome} (ID: ${idBaciaAtual})`);
 
-        // 🔥 Envia o objeto completo da bacia para o frontend via WebSocket
+        // Envia o objeto completo da bacia para o frontend
         io.emit('baciaAtualizada', proximaBacia);
+        return proximaBacia;
 
     } catch (error) {
-        console.error("Erro ao processar próxima bacia:", error);
+        console.error("Erro ao processar navegação de bacia:", error);
+        return null;
     }
 }
 
 // =========================================================
-// ROTAS HTTP (API REST PARA O REACT)
+// ROTAS HTTP (API REST PARA ESP32 E REACT)
 // =========================================================
 
-// Rota para o React carregar TODAS as bacias ao iniciar (montar menus, rodapé, etc)
+// Rota para o React carregar TODAS as bacias ao iniciar
 app.get('/api/bacias', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM bacias_hidrograficas ORDER BY id_bacia ASC');
@@ -94,20 +104,43 @@ app.get('/api/bacias', async (req, res) => {
     }
 });
 
+// Rotas chamadas pelo ESP32 (Gestos APDS-9960)
+app.post('/api/bacia/proxima', async (req, res) => {
+    const bacia = await navegarBacia('proxima');
+    res.json(bacia);
+});
+
+app.post('/api/bacia/anterior', async (req, res) => {
+    const bacia = await navegarBacia('anterior');
+    res.json(bacia);
+});
+
+app.post('/api/bacia/home', (req, res) => {
+    idBaciaAtual = null; // Reseta o estado
+    io.emit('baciaAtualizada', null); // Avisa o React para voltar ao mapa principal
+    console.log('🏠 Retornando ao Mapa Geral (Home)');
+    res.send("Home");
+});
+
+app.post('/api/bacia/info', async (req, res) => {
+    if (idBaciaAtual) {
+        // Em vez de enviar os dados de novo (o React já tem), 
+        // emitimos um evento específico para abrir a aba de detalhes
+        io.emit('mostrarDetalhes');
+        console.log('ℹ️ Gesto CIMA recebido: Exibindo detalhes no Front');
+    }
+    res.send("Info acionada");
+});
+
 // Rota para ativar uma bacia específica clicando pelo frontend
 app.post('/api/bacia/ativar', async (req, res) => {
     const { id_bacia } = req.body;
     try {
         const { rows } = await pool.query('SELECT * FROM bacias_hidrograficas WHERE id_bacia = $1', [id_bacia]);
-        
-        if (rows.length === 0) {
-            return res.status(404).send('Bacia não encontrada');
-        }
+        if (rows.length === 0) return res.status(404).send('Bacia não encontrada');
 
         const baciaAtivada = rows[0];
         idBaciaAtual = baciaAtivada.id_bacia;
-        
-        // Avisa todas as telas abertas que a bacia mudou
         io.emit('baciaAtualizada', baciaAtivada);
         res.status(200).json(baciaAtivada);
     } catch (error) {
@@ -123,8 +156,7 @@ app.post('/api/bacia/ativar', async (req, res) => {
 io.on('connection', (socket) => {
     console.log('💻 Frontend React conectado via WebSocket');
     
-    // Bônus: Se o React conectar depois que o ESP32 já trocou algumas bacias,
-    // envia o estado atual imediatamente para a tela não ficar vazia!
+    // Sincroniza o frontend caso ele conecte no meio da apresentação
     if (idBaciaAtual) {
         pool.query('SELECT * FROM bacias_hidrograficas WHERE id_bacia = $1', [idBaciaAtual])
             .then(result => {
@@ -145,7 +177,7 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`
     🚀 Backend rodando perfeitamente!
-    📡 Escutando Mosquitto (MQTT)
-    🏠 API e WebSockets rodando na porta ${PORT}
+    📡 Escutando MQTT e API HTTP
+    🏠 Porta ${PORT}
     `);
 });
